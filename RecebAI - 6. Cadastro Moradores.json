@@ -1,0 +1,215 @@
+{
+  "name": "RecebAI - 6. Cadastro Moradores",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "recebai/moradores",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8df15361-ea51-44b5-820a-150250dbd32e",
+      "name": "Webhook",
+      "webhookId": "9f361716-b0a5-489c-a6eb-c8f590f401ae"
+    },
+    {
+      "parameters": {
+        "jsCode": "function onlyDigits(value) {\n  return String(value || '').replace(/\\D/g, '');\n}\n\nfunction normalizePhone(value) {\n  let digits = onlyDigits(value);\n  if (!digits) return '';\n  if (digits.length === 10 || digits.length === 11) digits = '55' + digits;\n  if (digits.startsWith('550')) digits = '55' + digits.slice(3);\n  return digits;\n}\n\nfunction normalizeText(value) {\n  return String(value || '').trim().replace(/\\s+/g, ' ');\n}\n\nfunction pick(source, names) {\n  for (const name of names) {\n    const value = source?.[name];\n    if (value !== undefined && value !== null && String(value).trim() !== '') return value;\n  }\n  return '';\n}\n\nconst body = $input.first().json.body || {};\nconst id = normalizeText(pick(body, ['id'])) || 'mor_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);\nconst nome = normalizeText(pick(body, ['nome', 'nome_completo', 'morador']));\nconst cpf = onlyDigits(pick(body, ['cpf', 'documento']));\nconst celular = normalizePhone(pick(body, ['celular', 'telefone', 'whatsapp']));\nconst unidade = normalizeText(pick(body, ['unidade', 'apto', 'apartamento']));\nconst errors = [];\n\nif (!nome) errors.push('nome obrigatorio');\nif (!celular || celular.length < 12 || celular.length > 13) errors.push('celular invalido; use DDD + numero');\nif (!unidade) errors.push('unidade obrigatoria');\n\nif (errors.length) {\n  throw new Error('Payload de morador invalido: ' + errors.join('; '));\n}\n\nreturn [{ json: { id, nome, cpf, celular, unidade } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "ec7795cb-00d6-4969-b44c-9b9a1aaf44a2",
+      "name": "Agente IA - Tratar JSON do Morador"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, data: $('Agente IA - Tratar JSON do Morador').first().json }) }}",
+        "options": {
+          "responseCode": 201,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        624,
+        0
+      ],
+      "id": "f646d227-3e63-4a69-9285-4cfc7d0f7e8d",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Selecione sua planilha RecebAI"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "RecebAI - Moradores"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "nome": "={{ $json.nome }}",
+            "cpf": "={{ $json.cpf }}",
+            "celular": "={{ $json.celular }}",
+            "unidade": "={{ $json.unidade }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cpf",
+              "displayName": "cpf",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "celular",
+              "displayName": "celular",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "unidade",
+              "displayName": "unidade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        0
+      ],
+      "id": "d10e7dcd-74be-4875-9e68-f59ce3f50e54",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JW4gcQxxS5nT3Yg5",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Agente IA - Tratar JSON do Morador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA - Tratar JSON do Morador": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "90e8c4d2-840d-4158-9ef9-cb38155e4296",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bf9dc3d102431748f164ce4c7940eff04280c1180b1f406274f5bb58e494fbcf"
+  },
+  "id": "nvlLFQ8hDqQLVvHL",
+  "tags": []
+}

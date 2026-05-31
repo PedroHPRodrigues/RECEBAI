@@ -1,0 +1,149 @@
+{
+  "name": "RecebAI - 7. Listar Moradores",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "recebai/moradores",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "26ecb14e-36ef-481b-b52d-4984991e8510",
+      "name": "Webhook",
+      "webhookId": "5e4dfe0a-45dd-4584-bbbf-8ea9af1657f1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Selecione sua planilha RecebAI"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "RecebAI - Moradores"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "80c7dbd4-908f-4a60-a0e7-c37ea6188ea3",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JW4gcQxxS5nT3Yg5",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              }
+            ]
+          }
+        },
+        "responseBody": "={{ JSON.stringify($json.items || []) }}"
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        416,
+        0
+      ],
+      "id": "0083176d-36b1-49f7-963f-db373d64b310",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalizeText(value) {\n  return String(value || '').trim().replace(/\\s+/g, ' ');\n}\n\nconst rows = $input.all()\n  .map((item) => item.json || {})\n  .filter((row) => row.id && row.id !== 'id')\n  .map((row) => ({\n    id: normalizeText(row.id),\n    nome: normalizeText(row.nome),\n    cpf: normalizeText(row.cpf),\n    celular: normalizeText(row.celular),\n    unidade: normalizeText(row.unidade)\n  }));\n\nreturn [{ json: { items: rows } }];"
+      },
+      "id": "agente-ia-normalizar-lista-de-moradores",
+      "name": "Agente IA - Normalizar Lista de Moradores",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        300
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Agente IA - Normalizar Lista de Moradores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA - Normalizar Lista de Moradores": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "78c04d72-2fc9-4e91-a47d-51291da42a11",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bf9dc3d102431748f164ce4c7940eff04280c1180b1f406274f5bb58e494fbcf"
+  },
+  "id": "IiyRzVaebz7k0l3b",
+  "tags": []
+}

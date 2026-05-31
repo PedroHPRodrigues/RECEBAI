@@ -1,0 +1,379 @@
+{
+  "name": "RecebAI - 3. Registrar Encomenda",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "recebai/encomendas",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "221f2d06-1e48-41ef-bccc-7b0e98dc1c9f",
+      "name": "POST /recebai/encomendas",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "a9483d14-1e28-485a-847c-6ade3ad6e71f"
+    },
+    {
+      "parameters": {
+        "jsCode": "function onlyDigits(value) {\n  return String(value || '').replace(/\\D/g, '');\n}\n\nfunction normalizePhone(value) {\n  let digits = onlyDigits(value);\n  if (!digits) return '';\n  if (digits.startsWith('550')) digits = '55' + digits.slice(3);\n  if (!digits.startsWith('55') && digits.length > 11) digits = digits.slice(0, 11);\n  if (digits.length === 10 || digits.length === 11) digits = '55' + digits;\n  if (digits.startsWith('55') && digits.length > 13) digits = digits.slice(0, 13);\n  return digits;\n}\n\nfunction normalizeText(value) {\n  return String(value || '').trim().replace(/\\s+/g, ' ');\n}\n\nfunction matchKey(value) {\n  return normalizeText(value)\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '');\n}\n\nfunction unitKey(value) {\n  return matchKey(value)\n    .replace(/\\b(apto|apartamento|apt|ap|bloco|bl|unidade|casa)\\b/g, '')\n    .replace(/[^a-z0-9]/g, '');\n}\n\nfunction pick(source, names) {\n  for (const name of names) {\n    const value = source?.[name];\n    if (value !== undefined && value !== null && String(value).trim() !== '') return value;\n  }\n  return '';\n}\n\nfunction findMorador(moradores, nome, unidade) {\n  const nomeBusca = matchKey(nome);\n  const unidadeBusca = unitKey(unidade);\n\n  if (nomeBusca && unidadeBusca) {\n    const matchCompleto = moradores.find((row) => (\n      matchKey(row.nome) === nomeBusca && unitKey(row.unidade) === unidadeBusca\n    ));\n    if (matchCompleto) return matchCompleto;\n  }\n\n  if (nomeBusca) {\n    const matchNome = moradores.find((row) => matchKey(row.nome) === nomeBusca);\n    if (matchNome) return matchNome;\n  }\n\n  if (unidadeBusca) {\n    const matchUnidade = moradores.find((row) => unitKey(row.unidade) === unidadeBusca);\n    if (matchUnidade) return matchUnidade;\n  }\n\n  return null;\n}\n\nconst body = $('POST /recebai/encomendas').first().json.body || {};\nconst moradores = $input.all()\n  .map((item) => item.json || {})\n  .filter((row) => row.id && row.id !== 'id');\n\nconst id = normalizeText(pick(body, ['id'])) || 'enc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);\nconst trackingCode = normalizeText(pick(body, ['tracking_code', 'codigo_rastreio', 'codigo', 'rastreio', 'tracking']));\nconst destinatarioNome = normalizeText(pick(body, ['destinatario_nome', 'nome_destinatario', 'destinatario', 'morador_nome', 'nome']));\nconst destinatarioUnidade = normalizeText(pick(body, ['destinatario_unidade', 'unidade_destinatario', 'unidade', 'apto', 'apartamento', 'endereco']));\nconst transportadora = normalizeText(pick(body, ['transportadora', 'carrier', 'empresa'])) || 'Nao informado';\nconst errors = [];\n\nif (!trackingCode) errors.push('tracking_code obrigatorio');\nif (!destinatarioNome) errors.push('destinatario_nome obrigatorio');\nif (!destinatarioUnidade) errors.push('destinatario_unidade obrigatorio');\n\nif (errors.length) {\n  throw new Error('Payload de encomenda invalido: ' + errors.join('; '));\n}\n\nconst morador = findMorador(moradores, destinatarioNome, destinatarioUnidade);\nconst telefoneDoMorador = normalizePhone(morador?.celular);\nconst telefoneDoPayload = normalizePhone(pick(body, ['destinatario_telefone', 'telefone_destinatario', 'telefone', 'celular', 'whatsapp']));\nconst destinatarioTelefone = telefoneDoMorador || telefoneDoPayload;\n\nconst notificationText = destinatarioTelefone\n  ? 'Ola ' + destinatarioNome + '! Sua encomenda (' + transportadora + ' - ' + trackingCode.toUpperCase() + ') chegou na portaria. Por favor, retire no horario disponivel.'\n  : '';\n\nreturn [{\n  json: {\n    id,\n    tracking_code: trackingCode.toUpperCase(),\n    destinatario_nome: destinatarioNome,\n    destinatario_unidade: destinatarioUnidade,\n    destinatario_telefone: destinatarioTelefone,\n    transportadora,\n    status: 'aguardando_retirada',\n    created_at: new Date().toISOString(),\n    retirada_at: '',\n    retirada_por: '',\n    notification_text: notificationText,\n    morador_encontrado: Boolean(morador),\n    morador_id: normalizeText(morador?.id)\n  }\n}];"
+      },
+      "id": "fac979b8-943f-4447-97d5-1b4fd2a27416",
+      "name": "Agente IA - Tratar JSON da Encomenda",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Selecione sua planilha RecebAI"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "RecebAI - Encomendas"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "tracking_code": "={{ $json.tracking_code }}",
+            "destinatario_nome": "={{ $json.destinatario_nome }}",
+            "destinatario_unidade": "={{ $json.destinatario_unidade }}",
+            "transportadora": "={{ $json.transportadora }}",
+            "status": "={{ $json.status }}",
+            "created_at": "={{ $json.created_at }}",
+            "retirada_at": "={{ $json.retirada_at }}",
+            "retirada_por": "={{ $json.retirada_por }}",
+            "destinatario_telefone": "={{ $json.destinatario_telefone }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tracking_code",
+              "displayName": "tracking_code",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "destinatario_nome",
+              "displayName": "destinatario_nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "destinatario_unidade",
+              "displayName": "destinatario_unidade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "transportadora",
+              "displayName": "transportadora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "retirada_at",
+              "displayName": "retirada_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "retirada_por",
+              "displayName": "retirada_por",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "destinatario_telefone",
+              "displayName": "destinatario_telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "370af57e-08f1-4b1d-809a-4879d5c39078",
+      "name": "Append to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        720,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JW4gcQxxS5nT3Yg5",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {
+          "responseCode": 201,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              }
+            ]
+          }
+        },
+        "responseBody": "={{ JSON.stringify({ success: true, data: $('Agente IA - Tratar JSON da Encomenda').first().json }) }}"
+      },
+      "id": "07fd291c-e2c1-45a3-98a7-e4a4f5c2ae82",
+      "name": "Respond Created",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        960,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.EVOLUTION_API_URL || 'http://127.0.0.1:9').replace(/\\/$/, '') + '/message/sendText/' + ($env.EVOLUTION_INSTANCE || 'RecebAI') }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY || \"\" }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.number }}\",\n  \"textMessage\": {\n    \"text\": \"{{ $json.text }}\"\n  },\n  \"linkPreview\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1200,
+        80
+      ],
+      "id": "8e48ac55-fbc5-494d-b429-ed2af8a28064",
+      "name": "Enviar WhatsApp - Evolution API",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Selecione sua planilha RecebAI"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "RecebAI - Moradores"
+        },
+        "options": {}
+      },
+      "id": "buscar-moradores-para-notificacao",
+      "name": "Buscar Moradores - Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        240,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JW4gcQxxS5nT3Yg5",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const encomenda = $('Agente IA - Tratar JSON da Encomenda').first().json;\n\nif (!encomenda.destinatario_telefone || !encomenda.notification_text) {\n  return [];\n}\n\nreturn [{\n  json: {\n    number: encomenda.destinatario_telefone,\n    text: encomenda.notification_text\n  }\n}];"
+      },
+      "id": "preparar-envio-whatsapp",
+      "name": "Preparar Envio WhatsApp",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        80
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "POST /recebai/encomendas": {
+      "main": [
+        [
+          {
+            "node": "Buscar Moradores - Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Moradores - Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Agente IA - Tratar JSON da Encomenda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA - Tratar JSON da Encomenda": {
+      "main": [
+        [
+          {
+            "node": "Append to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Respond Created",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Preparar Envio WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Envio WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Enviar WhatsApp - Evolution API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "017b364a-b5cf-4786-ace3-4bfe4b82fcbf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bf9dc3d102431748f164ce4c7940eff04280c1180b1f406274f5bb58e494fbcf"
+  },
+  "id": "Vokm3ioc70y4Uzpq",
+  "tags": []
+}

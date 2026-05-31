@@ -1,0 +1,152 @@
+{
+  "name": "RecebAI - 5. Stats",
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Selecione sua planilha RecebAI"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "RecebAI - Encomendas"
+        },
+        "options": {}
+      },
+      "id": "193094b4-7417-4c83-9014-81ff6cf4bc0a",
+      "name": "Read All",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        240,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JW4gcQxxS5nT3Yg5",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all()\n  .map((item) => item.json || {})\n  .filter((row) => row.id && row.id !== 'id');\n\nconst today = new Date().toISOString().slice(0, 10);\nconst total = rows.length;\nconst aguardando = rows.filter((row) => row.status === 'aguardando_retirada').length;\nconst retirado = rows.filter((row) => row.status === 'retirado').length;\nconst retirado_hoje = rows.filter((row) => {\n  const retiradaAt = String(row.retirada_at || '');\n  return row.status === 'retirado' && retiradaAt.startsWith(today);\n}).length;\n\nreturn [{ json: { total, aguardando, retirado, retirado_hoje } }];"
+      },
+      "id": "36200f6f-bca9-4b72-b681-0c9daf2c32c9",
+      "name": "Agente IA - Calcular Estatisticas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              }
+            ]
+          }
+        },
+        "responseBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "d6b8d694-030a-4633-98d8-bfd717a804c4",
+      "name": "Respond Stats",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "path": "recebai/stats",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "a81d074c-b1e5-4cee-b3d8-bd6a40f18603",
+      "name": "GET /recebai/stats",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        0
+      ],
+      "webhookId": "03af95bd-4a8e-4024-bf57-401150884328"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Read All": {
+      "main": [
+        [
+          {
+            "node": "Agente IA - Calcular Estatisticas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET /recebai/stats": {
+      "main": [
+        [
+          {
+            "node": "Read All",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA - Calcular Estatisticas": {
+      "main": [
+        [
+          {
+            "node": "Respond Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d3968029-289c-407f-8c19-e442e063c39f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bf9dc3d102431748f164ce4c7940eff04280c1180b1f406274f5bb58e494fbcf"
+  },
+  "id": "VhEnQhyllNYtjvbF",
+  "tags": []
+}
