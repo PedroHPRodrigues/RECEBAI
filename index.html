@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RecebAI</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'DM Sans', sans-serif; background: #f4f6fb; display: flex; min-height: 100vh; }
+.sidebar { width: 220px; background: #1a1a2e; color: #fff; padding: 0; display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar-logo { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.sidebar-logo h1 { font-size: 20px; font-weight: 600; color: #fff; }
+.sidebar-logo span { color: #4f8ef7; }
+.sidebar-logo p { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+.nav { padding: 12px 0; flex: 1; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 20px; cursor: pointer; font-size: 14px; color: rgba(255,255,255,0.55); transition: all 0.15s; border-left: 3px solid transparent; }
+.nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+.nav-item.active { background: rgba(79,142,247,0.12); color: #4f8ef7; border-left-color: #4f8ef7; }
+.nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+.main { flex: 1; padding: 32px; overflow-y: auto; }
+.page { display: none; }
+.page.active { display: block; }
+.page-title { font-size: 22px; font-weight: 600; color: #1a1a2e; margin-bottom: 6px; }
+.page-sub { font-size: 14px; color: #8a94a6; margin-bottom: 28px; }
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+.stat-card { background: #fff; border-radius: 12px; padding: 20px; border: 1px solid #e8ecf4; }
+.stat-label { font-size: 13px; color: #8a94a6; margin-bottom: 8px; }
+.stat-value { font-size: 28px; font-weight: 600; color: #1a1a2e; }
+.stat-value.blue { color: #4f8ef7; }
+.stat-value.amber { color: #f59e0b; }
+.stat-value.green { color: #10b981; }
+.card { background: #fff; border-radius: 12px; border: 1px solid #e8ecf4; padding: 24px; }
+.form-group { margin-bottom: 18px; }
+.form-label { display: block; font-size: 13px; font-weight: 500; color: #4a5568; margin-bottom: 6px; }
+.form-input { width: 100%; padding: 10px 14px; border: 1px solid #dde3ee; border-radius: 8px; font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none; transition: border 0.15s; color: #1a1a2e; background: #fff; }
+.form-input:focus { border-color: #4f8ef7; box-shadow: 0 0 0 3px rgba(79,142,247,0.1); }
+.form-input.invalid { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.btn { padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+.btn-primary { background: #4f8ef7; color: #fff; }
+.btn-primary:hover { background: #3a7ce8; }
+.btn-primary:disabled { background: #a0b8f0; cursor: not-allowed; }
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+.btn-confirm { background: #10b981; color: #fff; }
+.btn-confirm:hover { background: #059669; }
+.btn-danger { background: #fee2e2; color: #991b1b; }
+.alert { padding: 12px 16px; border-radius: 8px; font-size: 14px; margin-bottom: 20px; display: none; }
+.alert-success { background: #d1fae5; color: #065f46; }
+.alert-error { background: #fee2e2; color: #991b1b; }
+.alert-info { background: #dbeafe; color: #1e40af; }
+.search-bar { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; padding: 10px 14px; font-size: 12px; font-weight: 500; color: #8a94a6; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e8ecf4; }
+td { padding: 13px 14px; border-bottom: 1px solid #f0f3f9; color: #2d3748; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f8faff; }
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+.badge-waiting { background: #fef3c7; color: #92400e; }
+.badge-done { background: #d1fae5; color: #065f46; }
+.empty-state { text-align: center; padding: 48px 20px; color: #8a94a6; }
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 100; }
+.modal-overlay.open { display: flex; }
+.modal { background: #fff; border-radius: 14px; padding: 28px; width: 400px; max-width: 90vw; }
+.modal h3 { font-size: 17px; font-weight: 600; color: #1a1a2e; margin-bottom: 6px; }
+.modal p { font-size: 14px; color: #8a94a6; margin-bottom: 20px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.btn-cancel { background: #f4f6fb; color: #4a5568; }
+.loading { text-align: center; padding: 40px; color: #8a94a6; font-size: 14px; }
+.url-indicator { background: #f0f3f9; border-left: 4px solid #4f8ef7; padding: 12px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 12px; color: #4a5568; word-break: break-all; }
+.url-indicator-label { font-size: 11px; color: #8a94a6; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-weight: 500; }
+.btn-group { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.btn-secondary { background: #e8ecf4; color: #4a5568; }
+.btn-secondary:hover { background: #d8dfe8; }
+.debug-log { background: #1a1a2e; color: #4f8ef7; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.4; margin-top: 20px; max-height: 200px; overflow-y: auto; }
+.debug-log-item { margin-bottom: 4px; }
+.debug-log-time { color: #8a94a6; }
+.debug-log-success { color: #10b981; }
+.debug-log-error { color: #f59e0b; }
+.history-list { margin-top: 12px; padding: 12px; background: #f8faff; border-radius: 6px; }
+.history-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #fff; border: 1px solid #e8ecf4; border-radius: 4px; margin-bottom: 6px; font-size: 12px; gap: 10px; }
+.history-item-url { word-break: break-all; flex: 1; color: #4a5568; }
+.history-item-btn { background: #4f8ef7; color: #fff; border: none; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 11px; }
+@media (max-width: 820px) {
+  body { display: block; }
+  .sidebar { width: 100%; min-height: auto; }
+  .nav { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .nav-item { padding: 10px 12px; font-size: 13px; }
+  .main { padding: 20px; }
+  .stats-grid, .form-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <h1>Receb<span>AI</span></h1>
+    <p>Gestão de Encomendas</p>
+  </div>
+  <nav class="nav">
+    <div class="nav-item active" onclick="navigate('dashboard')">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" onclick="navigate('portaria')">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2l7 4v6c0 5-7 10-7 10S5 17 5 12V6l7-4z"/></svg>
+      Portaria
+    </div>
+    <div class="nav-item" onclick="navigate('encomendas')">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 3H8l-2 4h12l-2-4z"/></svg>
+      Encomendas
+    </div>
+    <div class="nav-item" onclick="navigate('historico')">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      Histórico
+    </div>
+    <div class="nav-item" onclick="navigate('moradores')">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      Moradores
+    </div>
+    <div class="nav-item" onclick="navigate('configuracoes')">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6m-17.78 7.78l4.24-4.24m5.08-5.08l4.24-4.24"/></svg>
+      Configurações
+    </div>
+  </nav>
+</div>
+
+<main class="main">
+
+  <div id="dashboard" class="page active">
+    <div class="page-title">Dashboard</div>
+    <div class="page-sub">Resumo geral das encomendas</div>
+    <div id="dashboard-alert" class="alert"></div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Total de Encomendas</div><div class="stat-value blue" id="stat-total">0</div></div>
+      <div class="stat-card"><div class="stat-label">Aguardando Retirada</div><div class="stat-value amber" id="stat-aguardando">0</div></div>
+      <div class="stat-card"><div class="stat-label">Retiradas Hoje</div><div class="stat-value green" id="stat-hoje">0</div></div>
+    </div>
+    <div class="card">
+      <div style="font-size:15px;font-weight:500;color:#1a1a2e;margin-bottom:16px">Encomendas aguardando retirada</div>
+      <div id="dashboard-pending"><div class="loading">Carregando...</div></div>
+    </div>
+  </div>
+
+  <div id="portaria" class="page">
+    <div class="page-title">Registrar Encomenda</div>
+    <div class="page-sub">Preencha os dados da encomenda que chegou na portaria</div>
+    <div class="card" style="max-width:580px">
+      <div id="form-alert" class="alert"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Código de Rastreio</label>
+          <input class="form-input" id="f-tracking" autocomplete="off" placeholder="BR123456789BR" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Transportadora</label>
+          <input class="form-input" id="f-transportadora" autocomplete="off" placeholder="Correios, Jadlog..." />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nome do Destinatário</label>
+          <input class="form-input" id="f-nome" autocomplete="off" list="moradores-list" placeholder="João Silva" oninput="preencherMoradorPorNome()" />
+          <datalist id="moradores-list"></datalist>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unidade / Apto</label>
+          <input class="form-input" id="f-unidade" autocomplete="off" placeholder="Apto 42 - Bloco B" />
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-registrar" onclick="registrarEncomenda()">Registrar Encomenda</button>
+    </div>
+  </div>
+
+  <div id="encomendas" class="page">
+    <div class="page-title">Encomendas</div>
+    <div class="page-sub">Todas as encomendas registradas</div>
+    <div class="search-bar">
+      <input class="form-input" id="search-input" placeholder="Buscar por nome, unidade ou código..." oninput="filterTable()" style="max-width:340px" />
+      <button class="btn btn-secondary" onclick="loadEncomendas()">Atualizar</button>
+    </div>
+    <div class="card">
+      <div id="encomendas-table"><div class="loading">Carregando...</div></div>
+    </div>
+  </div>
+
+  <div id="historico" class="page">
+    <div class="page-title">Histórico</div>
+    <div class="page-sub">Encomendas já retiradas</div>
+    <div class="card">
+      <div id="historico-table"><div class="loading">Carregando...</div></div>
+    </div>
+  </div>
+
+  <div id="moradores" class="page">
+    <div class="page-title">Cadastro de Moradores</div>
+    <div class="page-sub">Cadastre os moradores do condomínio</div>
+    <div class="card" style="max-width:580px; margin-bottom:28px">
+      <div id="morador-alert" class="alert"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nome completo</label>
+          <input class="form-input" id="m-nome" autocomplete="off" placeholder="João Silva" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">CPF</label>
+          <input class="form-input" id="m-cpf" autocomplete="off" placeholder="000.000.000-00" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Celular (WhatsApp)</label>
+          <input class="form-input" id="m-celular" inputmode="numeric" autocomplete="off" placeholder="21999999999 (com DDD)" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unidade / Apto</label>
+          <input class="form-input" id="m-unidade" autocomplete="off" placeholder="Apto 42 - Bloco B" />
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-cadastrar-morador" onclick="cadastrarMorador()">Cadastrar Morador</button>
+    </div>
+    <div class="card">
+      <div style="font-size:15px;font-weight:500;color:#1a1a2e;margin-bottom:16px">Moradores cadastrados</div>
+      <div id="moradores-table"><div class="loading">Carregando...</div></div>
+    </div>
+  </div>
+
+  <div id="configuracoes" class="page">
+    <div class="page-title">Configurações</div>
+    <div class="page-sub">Configure os parâmetros da aplicação</div>
+    <div class="card" style="max-width:640px">
+      <div id="config-alert" class="alert"></div>
+
+      <div style="background:#e8f5ff;border:1px solid #b3e5fc;border-radius:8px;padding:12px;margin-bottom:20px">
+        <div class="url-indicator-label" style="color:#01579b">URL Ativa No Momento</div>
+        <div class="url-indicator" style="background:#fff;border-left-color:#01579b;color:#01579b" id="url-active">Carregando...</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">URL Base da API</label>
+        <input class="form-input" id="config-api-base" placeholder="http://localhost:5678/webhook" />
+        <p style="font-size:12px;color:#8a94a6;margin-top:6px">Use a base do n8n, sem barra final. Exemplo local: http://localhost:5678/webhook</p>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="salvarConfiguracao()">Salvar Configuração</button>
+        <button class="btn btn-secondary" onclick="testarConexao()">Testar Conexão</button>
+        <button class="btn btn-danger" onclick="resetarConfiguracao()">Resetar</button>
+      </div>
+
+      <div style="margin-top:24px;border-top:1px solid #e8ecf4;padding-top:20px">
+        <div style="font-size:13px;font-weight:500;color:#1a1a2e;margin-bottom:12px">Histórico de URLs</div>
+        <div id="history-container" class="history-list">
+          <div style="text-align:center;color:#8a94a6;font-size:12px;padding:20px">Nenhuma URL anterior salva</div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;border-top:1px solid #e8ecf4;padding-top:20px">
+        <div style="font-size:13px;font-weight:500;color:#1a1a2e;margin-bottom:8px">Log de Debug</div>
+        <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;margin-bottom:12px" onclick="limparLog()">Limpar Log</button>
+        <div class="debug-log" id="debug-log">
+          <div class="debug-log-item"><span class="debug-log-time">[00:00]</span> Sistema iniciado</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3>Confirmar Retirada</h3>
+    <p>Informe o nome de quem está retirando a encomenda.</p>
+    <div class="form-group">
+      <input class="form-input" id="modal-retirada-por" placeholder="Nome de quem retirou" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-confirm" onclick="confirmarRetirada()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_API_BASE = 'https://pdrzinn.app.n8n.cloud/webhook';
+let API_BASE = DEFAULT_API_BASE;
+let allEncomendas = [];
+let allMoradores = [];
+let currentRetiradaId = null;
+let urlHistory = [];
+
+function $(id) { return document.getElementById(id); }
+
+function adicionarLog(mensagem, tipo) {
+  const logEl = $('debug-log');
+  if (!logEl) return;
+  const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const className = tipo === 'success' ? 'debug-log-success' : tipo === 'error' ? 'debug-log-error' : '';
+  const item = document.createElement('div');
+  item.className = 'debug-log-item';
+  item.innerHTML = '<span class="debug-log-time">[' + time + ']</span> <span class="' + className + '">' + escapeHtml(mensagem) + '</span>';
+  logEl.appendChild(item);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, function(ch) {
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+  });
+}
+
+function normalizeApiBase(value) {
+  return String(value || '').trim().replace(/\/+$/, '');
+}
+
+function getApiBaseFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('api') || params.get('api_base') || '';
+}
+
+function carregarConfiguracao() {
+  const queryBase = getApiBaseFromUrl();
+  const savedBase = localStorage.getItem('api_base');
+  const savedHistory = localStorage.getItem('url_history');
+
+  if (savedHistory) {
+    try { urlHistory = JSON.parse(savedHistory) || []; } catch(e) { urlHistory = []; }
+  }
+
+  API_BASE = normalizeApiBase(queryBase || savedBase || DEFAULT_API_BASE);
+  if (queryBase) localStorage.setItem('api_base', API_BASE);
+
+  adicionarLog('API ativa: ' + API_BASE, 'info');
+  atualizarIndicadorUrl();
+}
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  $(page).classList.add('active');
+  const pages = ['dashboard','portaria','encomendas','historico','moradores','configuracoes'];
+  const idx = pages.indexOf(page);
+  if (idx >= 0) document.querySelectorAll('.nav-item')[idx].classList.add('active');
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'portaria') ensureMoradores();
+  if (page === 'encomendas') loadEncomendas();
+  if (page === 'historico') loadHistorico();
+  if (page === 'moradores') loadMoradores();
+  if (page === 'configuracoes') loadConfiguracoes();
+}
+
+function loadConfiguracoes() {
+  $('config-api-base').value = API_BASE;
+  atualizarIndicadorUrl();
+  renderizarHistorico();
+}
+
+function atualizarIndicadorUrl() {
+  const indicator = $('url-active');
+  if (indicator) indicator.textContent = API_BASE;
+}
+
+function salvarConfiguracao() {
+  const novaUrl = normalizeApiBase($('config-api-base').value);
+  const alertEl = $('config-alert');
+  if (!novaUrl) {
+    showAlert(alertEl, 'error', 'Por favor, insira uma URL válida.');
+    return;
+  }
+  try {
+    new URL(novaUrl);
+    if (novaUrl !== API_BASE && !urlHistory.includes(novaUrl)) {
+      urlHistory.unshift(novaUrl);
+      if (urlHistory.length > 10) urlHistory.pop();
+      localStorage.setItem('url_history', JSON.stringify(urlHistory));
+    }
+    API_BASE = novaUrl;
+    localStorage.setItem('api_base', novaUrl);
+    showAlert(alertEl, 'success', 'Configuração salva com sucesso.');
+    adicionarLog('Nova URL salva: ' + novaUrl, 'success');
+    atualizarIndicadorUrl();
+    renderizarHistorico();
+  } catch(e) {
+    showAlert(alertEl, 'error', 'URL inválida. Verifique e tente novamente.');
+    adicionarLog('URL inválida: ' + novaUrl, 'error');
+  }
+}
+
+function resetarConfiguracao() {
+  localStorage.removeItem('api_base');
+  API_BASE = DEFAULT_API_BASE;
+  $('config-api-base').value = API_BASE;
+  atualizarIndicadorUrl();
+  showAlert($('config-alert'), 'info', 'Configuração resetada para localhost.');
+}
+
+async function testarConexao() {
+  const alertEl = $('config-alert');
+  const btn = document.querySelector('button[onclick="testarConexao()"]');
+  const btnOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Testando...';
+  adicionarLog('Testando conexão com: ' + API_BASE, 'info');
+  try {
+    const data = await apiGet('/recebai/stats');
+    if (!data || typeof data !== 'object') throw new Error('Resposta inválida');
+    showAlert(alertEl, 'success', 'Conexão OK. API respondendo JSON.');
+    adicionarLog('Conexão bem-sucedida com a API', 'success');
+  } catch(e) {
+    showAlert(alertEl, 'error', 'Erro ao conectar: ' + e.message);
+    adicionarLog('Erro na conexão: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = btnOriginal;
+  }
+}
+
+function renderizarHistorico() {
+  const container = $('history-container');
+  if (!container) return;
+  if (urlHistory.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:#8a94a6;font-size:12px;padding:20px">Nenhuma URL anterior salva</div>';
+    return;
+  }
+  container.innerHTML = urlHistory.map(function(url) {
+    return '<div class="history-item"><div class="history-item-url">' + escapeHtml(url) + '</div><button class="history-item-btn" onclick="restaurarUrl(\'' + escapeHtml(url) + '\')">Usar</button></div>';
+  }).join('');
+}
+
+function restaurarUrl(url) {
+  $('config-api-base').value = url;
+  adicionarLog('URL do histórico restaurada para o campo de entrada', 'info');
+}
+
+function limparLog() {
+  const logEl = $('debug-log');
+  if (logEl) logEl.innerHTML = '<div class="debug-log-item"><span class="debug-log-time">[00:00]</span> Log limpo</div>';
+}
+
+async function apiGet(path) {
+  const res = await fetch(API_BASE + path, { method: 'GET' });
+  return parseResponse(res);
+}
+
+async function apiPost(path, payload) {
+  const res = await fetch(API_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  return parseResponse(res);
+}
+
+async function parseResponse(res) {
+  const text = await res.text();
+  let data = null;
+  if (text) {
+    try { data = JSON.parse(text); } catch(e) { throw new Error('A API respondeu texto, não JSON. Status ' + res.status); }
+  }
+  if (!res.ok) {
+    const detail = data && (data.message || data.error) ? ': ' + (data.message || data.error) : '';
+    throw new Error('HTTP ' + res.status + detail);
+  }
+  return data ?? (Array.isArray(data) ? [] : {});
+}
+
+function asArray(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.items)) return payload.items;
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  return [];
+}
+
+async function loadDashboard() {
+  const alertEl = $('dashboard-alert');
+  try {
+    const statsPromise = apiGet('/recebai/stats');
+    const encomendasPromise = apiGet('/recebai/encomendas?status=aguardando_retirada');
+    const result = await Promise.all([statsPromise, encomendasPromise]);
+    const stats = Array.isArray(result[0]) ? result[0][0] || {} : result[0] || {};
+    const pending = asArray(result[1]).filter(validPackageRow);
+    $('stat-total').textContent = stats.total ?? 0;
+    $('stat-aguardando').textContent = stats.aguardando ?? 0;
+    $('stat-hoje').textContent = stats.retirado_hoje ?? 0;
+    $('dashboard-pending').innerHTML = pending.length ? renderTable(pending, false) : '<div class="empty-state">Nenhuma encomenda aguardando retirada</div>';
+    hideAlert(alertEl);
+  } catch(e) {
+    $('dashboard-pending').innerHTML = '<div class="empty-state">Não foi possível carregar os dados</div>';
+    showAlert(alertEl, 'error', 'Falha ao carregar dashboard: ' + e.message);
+    adicionarLog('Dashboard falhou: ' + e.message, 'error');
+  }
+}
+
+async function loadEncomendas() {
+  try {
+    const data = await apiGet('/recebai/encomendas');
+    allEncomendas = asArray(data).filter(validPackageRow);
+    renderEncomendasTable();
+  } catch(e) {
+    $('encomendas-table').innerHTML = '<div class="empty-state">Erro ao carregar encomendas</div>';
+    adicionarLog('Erro ao carregar encomendas: ' + e.message, 'error');
+  }
+}
+
+async function loadHistorico() {
+  try {
+    const data = await apiGet('/recebai/encomendas?status=retirado');
+    const rows = asArray(data).filter(validPackageRow);
+    $('historico-table').innerHTML = rows.length ? renderTable(rows, false) : '<div class="empty-state">Nenhuma encomenda retirada ainda</div>';
+  } catch(e) {
+    $('historico-table').innerHTML = '<div class="empty-state">Erro ao carregar histórico</div>';
+    adicionarLog('Erro ao carregar histórico: ' + e.message, 'error');
+  }
+}
+
+async function ensureMoradores() {
+  if (allMoradores.length === 0) await loadMoradores(false);
+}
+
+async function loadMoradores(renderTableNow) {
+  if (renderTableNow === undefined) renderTableNow = true;
+  try {
+    const data = await apiGet('/recebai/moradores');
+    allMoradores = asArray(data).filter(function(m) { return m.id && m.id !== 'id'; });
+    renderMoradoresDatalist();
+    if (renderTableNow) renderMoradoresTable();
+  } catch(e) {
+    if (renderTableNow) $('moradores-table').innerHTML = '<div class="empty-state">Erro ao carregar moradores</div>';
+    adicionarLog('Erro ao carregar moradores: ' + e.message, 'error');
+  }
+}
+
+function renderMoradoresDatalist() {
+  const list = $('moradores-list');
+  list.innerHTML = allMoradores.map(function(m) {
+    return '<option value="' + escapeHtml(m.nome || '') + '">' + escapeHtml(m.unidade || '') + '</option>';
+  }).join('');
+}
+
+function renderMoradoresTable() {
+  const el = $('moradores-table');
+  if (allMoradores.length === 0) {
+    el.innerHTML = '<div class="empty-state">Nenhum morador cadastrado ainda</div>';
+    return;
+  }
+  const header = '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>CPF</th><th>Celular</th><th>Unidade</th></tr></thead><tbody>';
+  const body = allMoradores.map(function(m) {
+    return '<tr><td>' + escapeHtml(m.nome || '-') + '</td><td>' + escapeHtml(m.cpf || '-') + '</td><td>' + escapeHtml(formatPhone(m.celular)) + '</td><td>' + escapeHtml(m.unidade || '-') + '</td></tr>';
+  }).join('');
+  el.innerHTML = header + body + '</tbody></table></div>';
+}
+
+function preencherMoradorPorNome() {
+  const nome = $('f-nome').value.trim().toLowerCase();
+  if (!nome) return;
+  const morador = allMoradores.find(function(m) {
+    return String(m.nome || '').trim().toLowerCase() === nome;
+  });
+  if (!morador) return;
+  $('f-unidade').value = morador.unidade || $('f-unidade').value;
+}
+
+function filterTable() {
+  const q = $('search-input').value.toLowerCase();
+  const filtered = allEncomendas.filter(function(e) {
+    return String(e.destinatario_nome || '').toLowerCase().includes(q)
+      || String(e.destinatario_unidade || '').toLowerCase().includes(q)
+      || String(e.tracking_code || '').toLowerCase().includes(q);
+  });
+  $('encomendas-table').innerHTML = filtered.length ? renderTable(filtered, true) : '<div class="empty-state">Nenhum resultado encontrado</div>';
+}
+
+function renderEncomendasTable() {
+  $('encomendas-table').innerHTML = allEncomendas.length ? renderTable(allEncomendas, true) : '<div class="empty-state">Nenhuma encomenda cadastrada</div>';
+}
+
+function renderTable(rows, showAction) {
+  const header = '<div class="table-wrap"><table><thead><tr><th>Código</th><th>Destinatário</th><th>Unidade</th><th>Transportadora</th><th>Status</th><th>Chegada</th>' + (showAction ? '<th>Ação</th>' : '') + '</tr></thead><tbody>';
+  const body = rows.map(function(r) {
+    const isWaiting = r.status === 'aguardando_retirada';
+    const badge = isWaiting ? '<span class="badge badge-waiting">Aguardando</span>' : '<span class="badge badge-done">Retirado</span>';
+    const action = showAction && isWaiting ? '<button class="btn btn-sm btn-confirm" onclick="openModal(\'' + escapeHtml(r.id) + '\')">Confirmar Retirada</button>' : (showAction ? '<span style="color:#8a94a6;font-size:13px">-</span>' : '');
+    const date = r.created_at ? new Date(r.created_at).toLocaleDateString('pt-BR') : '-';
+    return '<tr><td style="font-family:monospace;font-size:13px">' + escapeHtml(r.tracking_code || '-') + '</td><td>' + escapeHtml(r.destinatario_nome || '-') + '</td><td>' + escapeHtml(r.destinatario_unidade || '-') + '</td><td>' + escapeHtml(r.transportadora || '-') + '</td><td>' + badge + '</td><td>' + escapeHtml(date) + '</td>' + (showAction ? '<td>' + action + '</td>' : '') + '</tr>';
+  }).join('');
+  return header + body + '</tbody></table></div>';
+}
+
+async function registrarEncomenda() {
+  const tracking = $('f-tracking').value.trim();
+  const nome = $('f-nome').value.trim();
+  const unidade = $('f-unidade').value.trim();
+  const transp = $('f-transportadora').value.trim();
+  const alertEl = $('form-alert');
+
+  clearInvalid(['f-tracking','f-nome','f-unidade','f-transportadora']);
+  const invalid = [];
+  if (!tracking) invalid.push('f-tracking');
+  if (!nome) invalid.push('f-nome');
+  if (!unidade) invalid.push('f-unidade');
+  if (!transp) invalid.push('f-transportadora');
+  if (invalid.length) {
+    markInvalid(invalid);
+    showAlert(alertEl, 'error', 'Preencha código, nome, unidade e transportadora.');
+    return;
+  }
+
+  const btn = $('btn-registrar');
+  btn.disabled = true;
+  btn.textContent = 'Registrando...';
+  try {
+    await apiPost('/recebai/encomendas', {
+      tracking_code: tracking,
+      destinatario_nome: nome,
+      destinatario_unidade: unidade,
+      transportadora: transp
+    });
+    showAlert(alertEl, 'success', 'Encomenda registrada com sucesso.');
+    ['f-tracking','f-nome','f-unidade','f-transportadora'].forEach(function(id) { $(id).value = ''; });
+    loadDashboard();
+  } catch(e) {
+    showAlert(alertEl, 'error', 'Erro ao registrar: ' + e.message);
+    adicionarLog('Registro falhou: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Registrar Encomenda';
+  }
+}
+
+async function cadastrarMorador() {
+  const nome = $('m-nome').value.trim();
+  const cpf = $('m-cpf').value.trim();
+  const celular = $('m-celular').value.trim();
+  const unidade = $('m-unidade').value.trim();
+  const alertEl = $('morador-alert');
+
+  clearInvalid(['m-nome','m-celular','m-unidade']);
+  const invalid = [];
+  if (!nome) invalid.push('m-nome');
+  if (!validBrazilPhone(celular)) invalid.push('m-celular');
+  if (!unidade) invalid.push('m-unidade');
+  if (invalid.length) {
+    markInvalid(invalid);
+    showAlert(alertEl, 'error', 'Preencha nome, celular com DDD e unidade.');
+    return;
+  }
+
+  const btn = $('btn-cadastrar-morador');
+  btn.disabled = true;
+  btn.textContent = 'Cadastrando...';
+  try {
+    await apiPost('/recebai/moradores', { nome: nome, cpf: cpf, celular: celular, unidade: unidade });
+    showAlert(alertEl, 'success', 'Morador cadastrado com sucesso.');
+    ['m-nome','m-cpf','m-celular','m-unidade'].forEach(function(id) { $(id).value = ''; });
+    loadMoradores();
+  } catch(e) {
+    showAlert(alertEl, 'error', 'Erro ao cadastrar: ' + e.message);
+    adicionarLog('Cadastro de morador falhou: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Cadastrar Morador';
+  }
+}
+
+function showAlert(el, type, msg) {
+  if (!el) return;
+  el.className = 'alert alert-' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function hideAlert(el) {
+  if (el) el.style.display = 'none';
+}
+
+function onlyDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function validBrazilPhone(value) {
+  const digits = onlyDigits(value);
+  return digits.length === 10 || digits.length === 11 || (digits.startsWith('55') && (digits.length === 12 || digits.length === 13));
+}
+
+function formatPhone(value) {
+  const digits = onlyDigits(value);
+  if (!digits) return '-';
+  return digits.startsWith('55') ? '+' + digits : digits;
+}
+
+function clearInvalid(ids) {
+  ids.forEach(function(id) { $(id).classList.remove('invalid'); });
+}
+
+function markInvalid(ids) {
+  ids.forEach(function(id) { $(id).classList.add('invalid'); });
+}
+
+function validPackageRow(row) {
+  return row && row.id && row.id !== 'id';
+}
+
+function openModal(id) {
+  currentRetiradaId = id;
+  $('modal-retirada-por').value = '';
+  $('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  $('modal-overlay').classList.remove('open');
+  currentRetiradaId = null;
+}
+
+async function confirmarRetirada() {
+  const nome = $('modal-retirada-por').value.trim();
+  if (!nome) {
+    alert('Informe o nome de quem está retirando.');
+    return;
+  }
+  try {
+    await apiPost('/recebai/encomendas/retirar', { id: currentRetiradaId, retirada_por: nome });
+    closeModal();
+    await Promise.all([loadEncomendas(), loadDashboard()]);
+  } catch(e) {
+    alert('Erro ao confirmar retirada: ' + e.message);
+  }
+}
+
+carregarConfiguracao();
+loadDashboard();
+ensureMoradores();
+</script>
+</body>
+</html>
