@@ -1,0 +1,152 @@
+{
+  "name": "RecebAI - 2. Listar Encomendas",
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Selecione sua planilha RecebAI"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "RecebAI - Encomendas"
+        },
+        "options": {}
+      },
+      "id": "97f2a20a-6f4d-4324-9c76-bee5c49dbe20",
+      "name": "Read Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        240,
+        0
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "JW4gcQxxS5nT3Yg5",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const status = $('GET /recebai/encomendas').first().json.query?.status;\n\nfunction normalizeRow(row) {\n  return {\n    id: String(row.id || '').trim(),\n    tracking_code: String(row.tracking_code || '').trim(),\n    destinatario_nome: String(row.destinatario_nome || '').trim(),\n    destinatario_unidade: String(row.destinatario_unidade || '').trim(),\n    destinatario_telefone: String(row.destinatario_telefone || '').trim(),\n    transportadora: String(row.transportadora || '').trim(),\n    status: String(row.status || '').trim() || 'aguardando_retirada',\n    created_at: String(row.created_at || '').trim(),\n    retirada_at: String(row.retirada_at || '').trim(),\n    retirada_por: String(row.retirada_por || '').trim()\n  };\n}\n\nconst rows = $input.all()\n  .map((item) => normalizeRow(item.json || {}))\n  .filter((row) => row.id && row.id !== 'id');\n\nconst filtered = status ? rows.filter((row) => row.status === status) : rows;\nreturn [{ json: { items: filtered } }];"
+      },
+      "id": "a38f006e-d825-42a0-9aab-5a226aba02df",
+      "name": "Agente IA - Normalizar Lista de Encomendas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              }
+            ]
+          }
+        },
+        "responseBody": "={{ JSON.stringify($json.items || []) }}"
+      },
+      "id": "8dbf2e93-2cf3-4fdc-9bcb-bd7d430799e6",
+      "name": "Respond JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "path": "recebai/encomendas",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "398fe244-616d-4b38-b141-932fe7908994",
+      "name": "GET /recebai/encomendas",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "74bdd150-75ea-4d8f-8ce4-1665d32982b1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Read Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Agente IA - Normalizar Lista de Encomendas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET /recebai/encomendas": {
+      "main": [
+        [
+          {
+            "node": "Read Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA - Normalizar Lista de Encomendas": {
+      "main": [
+        [
+          {
+            "node": "Respond JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5ccdd2ce-c0f9-4421-80c1-57d37a777eb7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bf9dc3d102431748f164ce4c7940eff04280c1180b1f406274f5bb58e494fbcf"
+  },
+  "id": "EBzklBALu4YcWrPW",
+  "tags": []
+}
